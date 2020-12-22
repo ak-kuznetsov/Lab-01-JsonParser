@@ -1,4 +1,8 @@
 # Лабораторная работа № 1
+| branch | status |
+|--------|--------|
+|developer|[![Build Status](https://travis-ci.com/ak-kuznetsov/Lab-01-JsonParser.svg?branch=developer )](https://travis-ci.org/github/ak-kuznetsov/Lab-01-JsonParser)|
+
 
 ## Задание
 
