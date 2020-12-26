@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <Student.hpp>
 
-TEST(Student_Test, Empty_Index){
+TEST(Student_Test, nullptr_test){
   const char j_string[] =\
       R"({"name": "Ivan Ivanov", "group": 9, "avg": 4, "debt": null})";
   Student emptyStudent((nlohmann::json::parse(j_string)));
