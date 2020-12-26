@@ -2,116 +2,139 @@
 
 #include <Json_Parser.hpp>
 
-std::string Get_Name(const nlohmann::json& j) { return j.get<std::string>(); }
-
-std::any Get_Group(const nlohmann::json& j) {
-  if (j.is_string())
-    return j.get<std::string>();
-  else
-    return j.get<int>();
+Json_Parser Json_Parser::From_File(const std::string& json_Path) {
+  std::ifstream file(json_Path);
+  if (!file) {
+    throw std::runtime_error{"unable to open file"};
+  }
+  nlohmann::json data;
+  file >> data;
+  if (data.empty()) {
+    throw std::runtime_error{"file is empty"};
+  }
+  if (!data.at("items").is_array()) {
+    throw std::runtime_error{"incorrect items field,"
+                             " items should be an array"};
+  }
+  if (data.at("items").size() != data.at("_meta").at("count").get<size_t>()) {
+    throw std::runtime_error{
+        R"(incorrect count field, count at meta
+     should be equal items field size)"};
+  }
+  std::vector<Student> newStudents;
+  for (const auto& item : data.at("items")) {
+    Student newStudent(item);
+    newStudents.push_back(newStudent);
+  }
+  return Json_Parser(newStudents);
 }
 
-std::any Get_Avg(const nlohmann::json& j) {
-  if (j.is_null()) {
-    return nullptr;
-  } else if (j.is_string()) {
-    return j.get<std::string>();
-  } else if (j.is_number_float()) {
-    return j.get<float>();
-  } else {
-    return j.get<int>();
-  }
-}
-
-std::any Get_Debt(const nlohmann::json& j) {
-  if (j.is_null()) {
-    return nullptr;
-  } else if (j.is_string()) {
-    return j.get<std::string>();
-  } else {
-    return j.get<std::vector<std::string>>();
-  }
-}
-
-std::vector<Student> From_File(const std::string& json_path) {
-  std::fstream file;
-  file.open(json_path, std::ios::in);
-  if (!file.is_open()) {
-    throw std::runtime_error(json_path + " not open");
-  }
-  nlohmann::json j;
-  file >> j;
-  file.close();
-  std::vector<Student> result;
-  if (!j.at("items").is_array()) {
-    throw std::runtime_error("Items most be array type");
-  }
-  if (j.at("items").size() != j.at("_meta").at("count")) {
-    throw std::runtime_error("meta_: count and items size mismatch");
-  }
-  for (std::size_t i = 0; i < j.at("items").size(); i++) {
-    Student student;
-    student.name = Get_Name(j.at("items")[i].at("name"));
-    student.group = Get_Group(j.at("items")[i].at("group"));
-    student.avg = Get_Avg(j.at("items")[i].at("avg"));
-    student.debt = Get_Debt(j.at("items")[i].at("debt"));
-    result.push_back(student);
-  }
-  return result;
-}
-
-void Print(const Student& student, std::ostream& os) {
-  os << "|" << std::left << std::setw(Width[0] +1) << student.name;
-  if (student.group.type() == typeid(int)) {
-    os << "| " << std::setw(Width[1]) << std::left
-           << std::any_cast<int>(student.group);
-  } else {
-    os << "| " << std::setw(Width[1]) << std::left
-           << std::any_cast<std::string>(student.group);
-  }
-  if (student.avg.type() == typeid(float)) {
-    os << "| " << std::setw(Width[2]) << std::left
-           << std::any_cast<float>(student.avg);
-  } else if (student.avg.type() == typeid(int)) {
-    os << "| " << std::setw(Width[2]) << std::left
-           << std::any_cast<int>(student.avg);
-  } else {
-    os << "| " << std::setw(Width[2]) << std::left
-           << std::any_cast<std::string>(student.avg);
-  }
-  if (student.debt.type() == typeid(std::nullptr_t)) {
-    os << "| " << std::setw(Width[3]) << std::left << "none" << std::right
-           << "|";
-  } else if (student.debt.type() == typeid(std::string)) {
-    os << "| " << std::setw(Width[3]) << std::left
-           << std::any_cast<std::string>(student.debt) << std::right << "|";
-  } else {
-    os
-        << "| " << std::setw(Width[3]) << std::left
-        << (std::to_string(
-                std::any_cast<std::vector<std::string>>(student.debt).size()) +
-            " items")
-        << "|";
+Json_Parser::Json_Parser(std::vector<Student> new_student) {
+  students = std::move(new_student);
+  for (const auto& student : students) {
+    if (student.To_String(Field_Name[0]).length() >
+        Get_Width(Field_Name[0]))
+      Set_Width(Field_Name[0], student.To_String(Field_Name[0]).length());
+    if (student.To_String(Field_Name[1]).length() >
+        Get_Width(Field_Name[1]))
+      Set_Width(Field_Name[1], student.To_String(Field_Name[1]).length());
+    if (student.To_String(Field_Name[2]).length() >
+        Get_Width(Field_Name[2]))
+      Set_Width(Field_Name[2], student.To_String(Field_Name[2]).length());
+    if (student.To_String(Field_Name[3]).length() >
+        Get_Width(Field_Name[3]))
+      Set_Width(Field_Name[3], student.To_String(Field_Name[3]).length());
   }
 }
 
-void Print(const std::vector<Student>& students, std::ostream& os) {
-  std::string table;
-  for (int j : Width) {
-    table += "|-";
-    for (int i = 0; i < j; ++i) {
-      table += "-";
-    }
+auto Json_Parser::Get_Width(const std::string& index) const -> size_t {
+  if (index == Field_Name[0]) {
+    return name_w;
+  } else if (index == Field_Name[1]) {
+    return group_w;
+  } else if (index == Field_Name[2]) {
+    return avg_w;
+  } else if (index == Field_Name[3]) {
+    return debt_w;
   }
-  table += "|";
-  os << "| " << std::left << std::setw(Width[0]) << "name";
-  os << "| " << std::left << std::setw(Width[1]) << "group";
-  os << "| " << std::left << std::setw(Width[2]) << "avg";
-  os << "| " << std::left << std::setw(Width[3]) << "debt";
-  os << std::right << "|";
-  os << std::endl << table << std::endl;
-  for (auto& student : students) {
-    Print(student, os);
-    os << std::endl << table << std::endl;
+  return 0;
+}
+
+void Json_Parser::Set_Width(const std::string& index, size_t new_Value) {
+  if (index == Field_Name[0]) {
+    name_w = new_Value;
+  } else if (index == Field_Name[1]) {
+    group_w = new_Value;
+  } else if (index == Field_Name[2]) {
+    avg_w = new_Value;
+  } else if (index == Field_Name[3]) {
+    debt_w = new_Value;
+  }
+}
+
+std::ostream& operator<<(std::ostream& os, const Json_Parser& parser) {
+  parser.Filler_sep(os);
+  parser.Filler_top(os, parser);
+  for (const auto& student : parser.Get_Vector()) {
+    parser.Print_students(student, os);
+  }
+  parser.Filler_sep(os);
+  return os;
+}
+
+auto Json_Parser::Get_Vector() const -> std::vector<Student> { return students; }
+
+void Json_Parser::Print_students(const Student& student, std::ostream& os) const {
+  Filler_sep(os);
+  os << "|" << student.To_String(Field_Name[0]);
+  Filler(Get_Width(Field_Name[0]) -
+         student.To_String(Field_Name[0]).length(), os);
+  os << "|" << student.To_String(Field_Name[1]);
+  Filler(Get_Width(Field_Name[1]) -
+         student.To_String(Field_Name[1]).length(), os);
+  os << "|" << student.To_String(Field_Name[2]);
+  Filler(Get_Width(Field_Name[2]) -
+         student.To_String(Field_Name[2]).length(), os);
+  os << "|" << student.To_String(Field_Name[3]);
+  Filler(Get_Width(Field_Name[3]) -
+         student.To_String(Field_Name[3]).length(), os);
+  os << "|" << std::endl;
+}
+
+void Json_Parser::Filler_sep(std::ostream& os) const {
+  os << "|";
+  for (size_t i = 0; i < Get_Width(Field_Name[0]); ++i) {
+    os << "-";
+  }
+  os << "|";
+  for (size_t i = 0; i < Get_Width(Field_Name[1]); ++i) {
+    os << "-";
+  }
+  os << "|";
+  for (size_t i = 0; i < Get_Width(Field_Name[2]); ++i) {
+    os << "-";
+  }
+  os << "|";
+  for (size_t i = 0; i < Get_Width(Field_Name[3]); ++i) {
+    os << "-";
+  }
+  os << "|" << std::endl;
+}
+
+void Json_Parser::Filler_top(std::ostream& os, const Json_Parser& parser) const {
+  os << "|" << Field_Name[0];
+  Filler(parser.Get_Width(Field_Name[0]) - Field_Name[0].length(), os);
+  os << "|" << Field_Name[1];
+  Filler(parser.Get_Width(Field_Name[1]) - Field_Name[1].length(), os);
+  os << "|" << Field_Name[2];
+  Filler(parser.Get_Width(Field_Name[2]) - Field_Name[2].length(), os);
+  os << "|" << Field_Name[3];
+  Filler(parser.Get_Width(Field_Name[3]) - Field_Name[3].length(), os);
+  os << "|\n";
+}
+
+void Json_Parser::Filler(size_t difference, std::ostream& os) {
+  for (size_t i = 0; i < difference; ++i) {
+    os << " ";
   }
 }

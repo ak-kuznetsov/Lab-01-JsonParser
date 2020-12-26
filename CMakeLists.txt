@@ -30,12 +30,12 @@ hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(lab-01 STATIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/
-        sources/Json_Parser.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/Json_Parser.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/sources/Student.cpp)
 
 add_executable(tests
-        ${CMAKE_CURRENT_SOURCE_DIR}/
-        tests/Json_Parser_Test.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/Json_Parser_Test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/Student_Test.cpp)
 
 target_include_directories(tests
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

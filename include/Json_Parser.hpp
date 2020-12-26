@@ -2,36 +2,44 @@
 
 #ifndef INCLUDE_JSON_PARSER_HPP_
 #define INCLUDE_JSON_PARSER_HPP_
-#include <nlohmann/json.hpp>
+
+#include <Student.hpp>
 #include <any>
 #include <string>
+#include <iostream>
+#include <nlohmann/json.hpp>
 #include <vector>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
-#include <stdexcept>
-#include <iomanip>
 
-const int Width[4] {14, 10, 12, 11};
+class Json_Parser {
+ private:
+  std::vector<Student> students;
+  size_t name_w{4};
+  size_t group_w{5};
+  size_t avg_w{3};
+  size_t debt_w{4};
 
-struct Student {
-  std::string name;
-  std::any group;
-  std::any avg;
-  std::any debt;
+ public:
+  explicit Json_Parser(std::vector<Student>);
+
+  auto Get_Width(const std::string&) const -> size_t;
+
+  void Set_Width(const std::string&, size_t);
+
+  auto Get_Vector() const -> std::vector<Student>;
+
+  void Print_students(const Student& student, std::ostream& os) const;
+
+  void Filler_sep(std::ostream& os) const;
+
+  static void Filler(size_t difference, std::ostream& os);
+
+  void Filler_top(std::ostream& os, const Json_Parser& parser) const;
+
+  static Json_Parser From_File(const std::string&);
+
+  friend std::ostream& operator<<(std::ostream&, const Json_Parser&);
 };
-
-  std::string Get_Name(const nlohmann::json&);
-
-  std::any Get_Group(const nlohmann::json&);
-
-  std::any Get_Avg(const nlohmann::json&);
-
-  std::any Get_Debt(const nlohmann::json&);
-
-  std::vector<Student> From_File(const std::string&);
-
-  void Print(const Student&, std::ostream&);
-
-  void Print(const std::vector<Student>&, std::ostream&);
-
 #endif  // INCLUDE_JSON_PARSER_HPP_

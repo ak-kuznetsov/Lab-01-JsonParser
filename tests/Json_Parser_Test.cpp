@@ -1,118 +1,54 @@
 // Copyright 2020 ak-kuznetsov <a.kuznetsov2701@mail.ru>
 
 #include <gtest/gtest.h>
-
 #include <Json_Parser.hpp>
 
-TEST(Json_Parser_Test, File_Open_Bad) {
-  std::vector<Student> students;
-  EXPECT_THROW(students = From_File("path/to/bad_file.json"),
-               std::runtime_error);
-}
-
-TEST(Json_Parser_Test, Meta_Test) {
-  std::fstream file{"bad_file.json", std::ios::out};
-  if (!file.is_open()) {
-    FAIL() << "Unable to open \"bad_file.json\"" << std::endl;
-  }
-  std::string bad_file = R"(
-{
-  "items": [
-    {
-      "name": "Ivanov Petr",
-      "group": "1",
-      "avg": "4.25",
-      "debt": null
-    },
-    {
-      "name": "Sidorov Ivan",
-      "group": 31,
-      "avg": 4,
-      "debt": "C++"
-    },
-    {
-      "name": "Pertov Nikita",
-      "group": "IU8-31",
-      "avg": 3.33,
-      "debt": [
-        "C++",
-        "Linux",
-        "Network"
-      ]
-    }
-  ],
-  "_meta": {
-    "count": 1
-  }
-}
-)";
-  file << bad_file;
-  file.close();
-  EXPECT_THROW(auto students = From_File("bad_file.json"),
-               std::runtime_error);
-}
-
 TEST(Json_Parser_Test, Table_Test) {
-  std::fstream file{"table_test.json", std::ios::out};
-  if (!file.is_open()) {
-    FAIL() << "Unable to open \"table_test.json\"" << std::endl;
-  }
-  std::string json_string = R"(
-{
-  "items": [
-    {
-      "name": "Ivanov Petr",
-      "group": "1",
-      "avg": "4.25",
-      "debt": null
-    },
-    {
-      "name": "Sidorov Ivan",
-      "group": 31,
-      "avg": 4,
-      "debt": "C++"
-    },
-    {
-      "name": "Pertov Nikita",
-      "group": "IU8-31",
-      "avg": 3.33,
-      "debt": [
-        "C++",
-        "Linux",
-        "Network"
-      ]
-    }
-  ],
-  "_meta": {
-    "count": 3
-  }
-}
+  const char j_string[] =
+R"({"name": "Ivan Ivanov", "group": "IU10-39", "avg": "4", "debt": "C++"})";
+  nlohmann::json j = nlohmann::json::parse(j_string);
+  Student Nikita(j);
+
+  const char j_string1[] =
+R"({"name": "Ivan Ivanov", "group": 39, "avg": 4, "debt": null})";
+  j = nlohmann::json::parse(j_string1);
+  Student Ivan(j);
+
+  const char j_string2[] =
+      R"({"name": "Ivan Ivanov", "group": "Nine", "avg": 3.33, "debt": ["C++", "Linux", "Network"]})";
+  j = nlohmann::json::parse(j_string2);
+  Student Petr(j);
+
+  Json_Parser parser(std::vector<Student>{Petr, Ivan, Nikita});
+
+  std::stringstream parser_stream;
+  parser_stream << parser;
+  std::string ref_string =
+      R"(|-----------|-------|----|-------|
+|name       |group  |avg |debt   |
+|-----------|-------|----|-------|
+|Ivan Ivanov|Nine   |3.33|3 items|
+|-----------|-------|----|-------|
+|Ivan Ivanov|39     |4   |null   |
+|-----------|-------|----|-------|
+|Ivan Ivanov|IU10-39|4   |C++    |
+|-----------|-------|----|-------|
 )";
-  file << json_string;
-  file.close();
-  std::string table =
-      R"(| name          | group     | avg         | debt       |
-|---------------|-----------|-------------|------------|
-|Ivanov Petr    | 1         | 4.25        | none       |
-|---------------|-----------|-------------|------------|
-|Sidorov Ivan   | 31        | 4           | C++        |
-|---------------|-----------|-------------|------------|
-|Pertov Nikita  | IU8-31    | 3.33        | 3 items    |
-|---------------|-----------|-------------|------------|
-)";
-  std::stringstream ss;
-  auto students = From_File("table_test.json");
-  Print(students, ss);
-  EXPECT_EQ(ss.str(), table);
+
+  EXPECT_TRUE(ref_string == parser_stream.str());
 }
 
-TEST(Json_Parser_Test, Items_Is_Not_Array) {
-  std::fstream file{"bad_file.json", std::ios::out};
-  if (!file.is_open()) {
-    FAIL() << "Unable to open \"bad_file.json\"" << std::endl;
+TEST(Json_Parser_Test, File_Open_Bad) {
+  try {
+    Json_Parser::From_File("Bad_File.json");
+  } catch (std::runtime_error& e) {
+    EXPECT_TRUE(e.what() == std::string("unable to open file"));
   }
-  std::string bad_file =
-      R"({
+}
+
+TEST(Json_Parser_Test, Items_is_array_Bad) {
+  std::string json_string1 =
+R"({
 "items": 0,
 "name": "Ivan Ivanov",
 "group": 39,
@@ -122,9 +58,43 @@ TEST(Json_Parser_Test, Items_Is_Not_Array) {
 "count": 3
 }
 })";
-  file << bad_file;
-  file.close();
-  EXPECT_THROW(auto students = From_File("bad_file.json"),
-               std::runtime_error);
+  std::ofstream true_file;
+  true_file.open("true_file.json", std::ios::out);
+  true_file << json_string1;
+  true_file.close();
+  try {
+    Json_Parser::From_File("true_file.json");
+  } catch (std::runtime_error& e) {
+    EXPECT_TRUE(e.what() ==
+                    std::string("incorrect items field, items should be an array"));
+  }
+}
+
+TEST(Json_Parser_Test, Meta_Test) {
+  std::string json_string1 =
+R"({
+"items": [
+{
+"name": "Ivan Ivanov",
+"group": 39,
+"avg": 4,
+"debt": null
+}
+],
+"_meta": {
+"count": 2
+}
+})";
+  std::ofstream true_file;
+  true_file.open("true_file.json", std::ios::out);
+  true_file << json_string1;
+  true_file.close();
+  try {
+    Json_Parser::From_File("true_file.json");
+  } catch (std::runtime_error& e) {
+    EXPECT_TRUE(e.what() ==
+                    std::string(R"(incorrect count field, count at meta
+     should be equal items field size)"));
+  }
 }
 
